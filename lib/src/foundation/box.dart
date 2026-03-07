@@ -9,19 +9,13 @@ extension LayoutGridExtensionsForBoxConstraints on BoxConstraints {
   /// Returns a new [BoxConstraints] tightening or loosening the receiver as
   /// specified by [gridFit].
   BoxConstraints constraintsForGridFit(GridFit gridFit) {
-    switch (gridFit) {
-      case GridFit.expand:
-        final upperBound = biggest;
-        return BoxConstraints.tightForFinite(
-          width: upperBound.width,
-          height: upperBound.height,
-        );
-
-      case GridFit.loose:
-        return loosen();
-
-      case GridFit.passthrough:
-        return this;
-    }
+    return switch (gridFit) {
+      GridFit.expand => BoxConstraints.tightForFinite(
+          width: biggest.width,
+          height: biggest.height,
+        ),
+      GridFit.loose => loosen(),
+      GridFit.passthrough => this,
+    };
   }
 }

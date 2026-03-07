@@ -28,7 +28,7 @@ Axis measurementAxisForTrackType(TrackType type) {
 /// Another algorithm that is relatively cheap include [FlexibleTrackSize],
 /// which distributes the space equally among the flexible tracks.
 @immutable
-abstract class TrackSize with Diagnosticable {
+sealed class TrackSize with Diagnosticable {
   /// Abstract const constructor. This constructor enables subclasses to provide
   /// const constructors so that they can be used in const expressions.
   const TrackSize({this.debugLabel});
@@ -141,8 +141,7 @@ abstract class TrackSize with Diagnosticable {
 ///
 /// This is the cheapest way to size a track.
 class FixedTrackSize extends TrackSize {
-  const FixedTrackSize(this.sizeInPx, {String? debugLabel})
-      : super(debugLabel: debugLabel);
+  const FixedTrackSize(this.sizeInPx, {super.debugLabel});
 
   /// The size (width for columns, height for rows) the track should occupy
   /// in logical pixels.
@@ -200,9 +199,8 @@ class FlexibleTrackSize extends TrackSize {
   /// Creates a track size based on a fraction of the grid's leftover space.
   ///
   /// The [flexFactor] argument must not be null.
-  const FlexibleTrackSize(this.flexFactor, {String? debugLabel})
-      : assert(flexFactor > 0),
-        super(debugLabel: debugLabel);
+  const FlexibleTrackSize(this.flexFactor, {super.debugLabel})
+      : assert(flexFactor > 0);
 
   /// The flex factor to use for this track
   ///
@@ -259,8 +257,7 @@ class FlexibleTrackSize extends TrackSize {
 ///
 /// This is a very expensive way to size a column.
 class IntrinsicContentTrackSize extends TrackSize {
-  const IntrinsicContentTrackSize({String? debugLabel})
-      : super(debugLabel: debugLabel);
+  const IntrinsicContentTrackSize({super.debugLabel});
 
   @override
   bool get isIntrinsic {
@@ -274,16 +271,18 @@ class IntrinsicContentTrackSize extends TrackSize {
     double Function(RenderBox)? crossAxisSizeForItem,
   }) {
     crossAxisSizeForItem ??= (_) => double.infinity;
-    final minContentContributions = items.map(
-      (item) => _itemMinIntrinsicSizeOnAxis(
+    double maxContribution = 0.0;
+    for (final item in items) {
+      final contribution = _itemMinIntrinsicSizeOnAxis(
         item,
         measurementAxisForTrackType(type),
-        crossAxisSizeForItem!(item),
-      ),
-    );
-    return max(
-      minContentContributions,
-    )!;
+        crossAxisSizeForItem(item),
+      );
+      if (contribution > maxContribution) {
+        maxContribution = contribution;
+      }
+    }
+    return maxContribution;
   }
 
   @override
@@ -292,14 +291,18 @@ class IntrinsicContentTrackSize extends TrackSize {
     Iterable<RenderBox> items, {
     required double Function(RenderBox) crossAxisSizeForItem,
   }) {
-    final maxContentContributions = items.map(
-      (item) => _itemMaxIntrinsicSizeOnAxis(
+    double maxContribution = 0.0;
+    for (final item in items) {
+      final contribution = _itemMaxIntrinsicSizeOnAxis(
         item,
         measurementAxisForTrackType(type),
         crossAxisSizeForItem(item),
-      ),
-    );
-    return max(maxContentContributions)!;
+      );
+      if (contribution > maxContribution) {
+        maxContribution = contribution;
+      }
+    }
+    return maxContribution;
   }
 
   @override

@@ -113,7 +113,13 @@ class NamedGridAreas {
 /// ''');
 /// ```
 ///
+final Map<String, NamedGridAreas> _namedAreasCache = {};
+
 NamedGridAreas parseNamedAreasSpec(String namedAreasSpec) {
+  if (_namedAreasCache.containsKey(namedAreasSpec)) {
+    return _namedAreasCache[namedAreasSpec]!;
+  }
+
   final gridAreaBuilders = <String, _GridAreaBuilder>{};
   int? columnCount;
 
@@ -149,13 +155,16 @@ NamedGridAreas parseNamedAreasSpec(String namedAreasSpec) {
     }
   }
 
-  return NamedGridAreas(
+  final result = NamedGridAreas(
     columnCount: columnCount!,
     rowCount: rowSpecs.length,
     areas: gridAreaBuilders.map(
       (name, builder) => MapEntry(name, builder.build()),
     ),
   );
+
+  _namedAreasCache[namedAreasSpec] = result;
+  return result;
 }
 
 final _tokenSeparatorPattern = RegExp(r'\s+');

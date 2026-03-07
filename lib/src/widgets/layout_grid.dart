@@ -95,7 +95,7 @@ enum GridFit {
 /// [FlutterError] will be thrown during layout.
 class LayoutGrid extends MultiChildRenderObjectWidget {
   LayoutGrid({
-    Key? key,
+    super.key,
     this.autoPlacement = AutoPlacement.rowSparse,
     this.gridFit = GridFit.expand,
     this.areas,
@@ -104,10 +104,9 @@ class LayoutGrid extends MultiChildRenderObjectWidget {
     double? rowGap,
     double? columnGap,
     this.textDirection,
-    List<Widget> children = const [],
+    super.children,
   })  : this.rowGap = rowGap ?? 0,
-        this.columnGap = columnGap ?? 0,
-        super(key: key, children: children) {
+        this.columnGap = columnGap ?? 0 {
     assert(columnSizes.isNotEmpty);
     assert(rowSizes.isNotEmpty);
     assert(() {

@@ -24,13 +24,13 @@ enum AutoPlacementPacking {
 /// available space, spanning one row and one column.
 class GridPlacement extends ParentDataWidget<GridParentData> {
   const GridPlacement({
-    Key? key,
-    required Widget child,
+    super.key,
+    required super.child,
     this.columnStart,
     this.columnSpan = 1,
     this.rowStart,
     this.rowSpan = 1,
-  }) : super(key: key, child: child);
+  });
 
   /// If `null`, the child will be auto-placed.
   final int? columnStart;
@@ -114,10 +114,10 @@ class GridPlacement extends ParentDataWidget<GridParentData> {
 /// child of this widget is not shown.
 class NamedAreaGridPlacement extends ParentDataWidget<GridParentData> {
   const NamedAreaGridPlacement({
-    Key? key,
+    super.key,
     required this.areaName,
-    required Widget child,
-  }) : super(key: key, child: child);
+    required super.child,
+  });
 
   final String areaName;
 

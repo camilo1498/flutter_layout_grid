@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:quiver/iterables.dart';
 
@@ -324,22 +323,26 @@ class PlacementGridCursor {
   }
 }
 
-@immutable
 class GridCell {
   GridCell(this.grid, this.index);
 
   final PlacementGrid grid;
   final int index;
-  final occupants = <RenderBox>{};
+  Set<RenderBox>? _occupants;
+
+  Set<RenderBox> get occupants {
+    _occupants ??= <RenderBox>{};
+    return _occupants!;
+  }
 
   int get column => index % grid.explicitColumnCount;
   int get row => index ~/ grid.explicitColumnCount;
 
-  bool get isOccupied => occupants.isNotEmpty;
+  bool get isOccupied => _occupants != null && _occupants!.isNotEmpty;
   bool get isVacant => !isOccupied;
 
-  String? get debugLabel => occupants.isNotEmpty
-      ? (occupants.first.parentData as GridParentData).debugLabel
+  String? get debugLabel => isOccupied
+      ? (_occupants!.first.parentData as GridParentData).debugLabel
       : null;
 
   Iterable<GridCell> nextCellsAlongAxis(Axis axis) sync* {

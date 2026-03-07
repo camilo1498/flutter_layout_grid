@@ -54,7 +54,7 @@ class _WhereBuilderIterable<E> extends Iterable<E> {
       _WhereIterator(_iterable.iterator, _predicateBuilder());
 }
 
-class _WhereIterator<E> extends Iterator<E> {
+class _WhereIterator<E> implements Iterator<E> {
   final Iterator<E> _iterator;
   final _ElementPredicate<E> _f;
 

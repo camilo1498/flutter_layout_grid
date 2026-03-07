@@ -5,14 +5,14 @@ version: 2.0.8
 homepage: https://github.com/shyndman/flutter_layout_grid
 
 environment:
-  flutter: '>=1.25.0'
-  sdk: '>=2.15.0 <4.0.0'
+  flutter: '>=3.0.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  collection: ^1.15.0
-  quiver: ^3.0.0
+  collection: ^1.19.1
+  quiver: ^3.2.2
 
 dev_dependencies:
   flutter_lints: ^3.0.0
