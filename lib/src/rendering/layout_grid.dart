@@ -196,8 +196,11 @@ class RenderLayoutGrid extends RenderBox
   // intentional — Flutter's intrinsic sizing protocol requires us to produce
   // a meaningful size given a constraint, and running the full layout algorithm
   // is the only way to correctly account for intrinsic/flexible track sizing.
+  // We pass dryRun: true so that the intrinsic pass does not modify
+  // the persisted placement state (needsPlacement flag), which could cause
+  // the real layout pass to skip a required item placement recalculation.
   GridSizingInfo _computeIntrinsicSize(BoxConstraints constraints) =>
-      computeGridSize(constraints);
+      computeGridSize(constraints, dryRun: true);
 
   @override
   double? computeDistanceToActualBaseline(TextBaseline baseline) {
@@ -263,12 +266,17 @@ class RenderLayoutGrid extends RenderBox
       return true;
     }());
 
-    // Position and lay out the grid items
+    // Position and lay out the grid items.
+    // We use a null-safe lookup on itemAreas to guard against the edge case
+    // where a child's parentData says it is placed but its area is missing
+    // from the placement grid (e.g., due to reordering or intrinsic sizing
+    // invalidating placement between passes). In that case we skip the child
+    // rather than crashing.
     var child = firstChild;
     while (child != null) {
       final parentData = child.parentData as GridParentData;
-      if (parentData.isPlaced) {
-        final area = _placementGrid.itemAreas[child]!;
+      final area = _placementGrid.itemAreas[child];
+      if (parentData.isPlaced && area != null) {
         final areaRect =
             gridSizing.offsetForArea(area) & gridSizing.sizeForArea(area);
 
@@ -309,11 +317,14 @@ class RenderLayoutGrid extends RenderBox
   GridSizingInfo computeGridSize(
     BoxConstraints gridConstraints, {
     BoxConstraints? childConstraints,
+    // When true, placement state is not mutated. Used by intrinsic sizing to
+    // avoid contaminating the real layout pass.
+    bool dryRun = false,
   }) {
     childConstraints ??= gridConstraints.constraintsForGridFit(gridFit);
 
     // Distribute grid items into cells
-    performItemPlacement();
+    performItemPlacement(dryRun: dryRun);
 
     // Ready an object that contains our sizing information
     final gridSizing = GridSizingInfo.fromTrackSizeFunctions(
@@ -354,7 +365,16 @@ class RenderLayoutGrid extends RenderBox
 
   /// Determines where each grid item is positioned in the grid, using the
   /// auto-placement algorithm if necessary.
-  void performItemPlacement() {
+  ///
+  /// When [dryRun] is `true`, a fresh placement is computed without modifying
+  /// [_placementGrid] or resetting [needsPlacement]. Used by intrinsic sizing.
+  void performItemPlacement({bool dryRun = false}) {
+    if (dryRun) {
+      // Always compute a local placement for intrinsic sizing without
+      // touching the persisted state.
+      _placementGrid = computeItemPlacement(this);
+      return;
+    }
     if (needsPlacement) {
       needsPlacement = false;
       _placementGrid = computeItemPlacement(this);
