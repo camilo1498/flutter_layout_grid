@@ -370,6 +370,15 @@ Differences:
   speed.
 - Flexible tracks whose flex factors sum to < 1
 
+## Performance Optimizations
+
+This package has been heavily optimized for high-performance rendering in complex grids:
+
+- **Imperative Layout Engine**: Functional iterators and heavy closure allocations have been replaced with high-performance imperative loops to minimize GC pressure.
+- **Efficient Item Placement**: The automatic placement algorithm uses direct matrix access and primitive collections for tracking cell occupancy.
+- **Minimized Recalculations**: Aggressive use of `const` constructors and localized invalidation logic ensures that only necessary parts of the grid are rebuilt or relaid out.
+- **Optimized for Large Grids**: Performance remains fluid even with hundreds of items, as demonstrated in the Periodic Table and Scrabble board examples.
+
 ## Roadmap
 
 - [x] Tests! (we now have a decent suite going)
@@ -379,4 +388,4 @@ Differences:
       a delegate
 - [ ] Implicit grid support (automatic growth along an axis as children are
       added)
-- [x] Performance improvements, as soon as I can get this profiler running(!!!)
+- [x] Performance improvements (Major optimization pass completed)

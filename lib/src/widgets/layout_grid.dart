@@ -1,10 +1,7 @@
-// ignore_for_file: deprecated_member_use_from_same_package, unnecessary_this
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
-import '../foundation/placement.dart';
 import '../rendering/layout_grid.dart';
 import '../rendering/track_size.dart';
 import 'placement.dart';
@@ -94,32 +91,18 @@ enum GridFit {
 /// If a grid item falls outside of the area defined by the template tracks, an
 /// [FlutterError] will be thrown during layout.
 class LayoutGrid extends MultiChildRenderObjectWidget {
-  LayoutGrid({
+  const LayoutGrid({
     super.key,
     this.autoPlacement = AutoPlacement.rowSparse,
     this.gridFit = GridFit.expand,
     this.areas,
     required this.columnSizes,
     required this.rowSizes,
-    double? rowGap,
-    double? columnGap,
+    this.rowGap = 0,
+    this.columnGap = 0,
     this.textDirection,
     super.children,
-  })  : this.rowGap = rowGap ?? 0,
-        this.columnGap = columnGap ?? 0 {
-    assert(columnSizes.isNotEmpty);
-    assert(rowSizes.isNotEmpty);
-    assert(() {
-      if (areas == null) return true;
-      final parsedAreas = parseNamedAreasSpec(areas!);
-
-      assert(parsedAreas.columnCount == columnSizes.length,
-          'areas.columnCount != columnSizes.length');
-      assert(parsedAreas.rowCount == rowSizes.length,
-          'areas.rowCount != rowSizes.length');
-      return true;
-    }(), 'areas ');
-  }
+  });
 
   /// Controls how the auto-placement algorithm works, specifying exactly how
   /// auto-placed items get flowed into the grid.

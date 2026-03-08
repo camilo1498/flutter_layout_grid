@@ -1,4 +1,5 @@
 import 'package:flutter/rendering.dart';
+import 'package:flutter_layout_grid/src/rendering/grid_parent_data.dart';
 import 'package:quiver/iterables.dart';
 
 import '../foundation/placement.dart';
@@ -103,6 +104,12 @@ void _resolveChildNamedArea(
 ///
 /// Update: Looks like Chromium uses doubly linked lists to store this
 /// information.
+/// A representation of the grid during the item placement phase.
+///
+/// This class is responsible for mapping [RenderBox] children to their
+/// respective [GridArea]s, either through explicit placement or via the
+/// automatic placement algorithm. It maintains a matrix of [GridCell]s to
+/// track occupancy.
 class PlacementGrid {
   PlacementGrid({
     required this.grid,
@@ -125,29 +132,25 @@ class PlacementGrid {
   Iterable<GridCell> getCellsInTrack(
     int trackIndex,
     TrackType trackType,
-  ) sync* {
-    final trackMainAxis = mainAxisForTrackType(trackType);
-    final firstCellIndex = trackMainAxis == Axis.vertical
-        ? trackIndex
-        : trackIndex * explicitColumnCount;
-
-    final cell = _cells.length > firstCellIndex ? _cells[firstCellIndex] : null;
-    if (cell != null) {
-      yield* [cell].followedBy(cell.nextCellsAlongAxis(trackMainAxis));
-    }
-  }
-
-  Iterable<GridCell> getCellsInArea(GridArea area) sync* {
-    for (int x = area.columnStart; x < area.columnEnd; x++) {
-      for (int y = area.rowStart; y < area.rowEnd; y++) {
-        yield getCellAt(x, y);
-      }
+  ) {
+    if (trackType == TrackType.row) {
+      return Iterable<GridCell>.generate(
+          explicitColumnCount, (i) => getCellAt(i, trackIndex));
+    } else {
+      return Iterable<GridCell>.generate(
+          explicitRowCount, (i) => getCellAt(trackIndex, i));
     }
   }
 
   /// Returns `true` if the specified [area] is vacant.
-  bool checkIsVacant(GridArea area) =>
-      getCellsInArea(area).every((c) => c.isVacant);
+  bool checkIsVacant(GridArea area) {
+    for (int x = area.columnStart; x < area.columnEnd; x++) {
+      for (int y = area.rowStart; y < area.rowEnd; y++) {
+        if (!getCellAt(x, y).isVacant) return false;
+      }
+    }
+    return true;
+  }
 
   /// Creates a cursor that for traversing the grid to find vacancy.
   PlacementGridCursor createCursor(AutoPlacement autoPlacementMode) =>
@@ -170,8 +173,10 @@ class PlacementGrid {
       ]);
     }
 
-    for (final cell in getCellsInArea(area)) {
-      cell.occupants.add(item);
+    for (int x = area.columnStart; x < area.columnEnd; x++) {
+      for (int y = area.rowStart; y < area.rowEnd; y++) {
+        getCellAt(x, y).occupants.add(item);
+      }
     }
     itemAreas[item] = area;
   }
@@ -250,66 +255,59 @@ class PlacementGridCursor {
   }
 
   GridArea moveToNextEmptyArea(int? columnSpan, int? rowSpan) {
-    Iterable<GridArea> Function(int?, int?) moveFn;
     if (isFixedToTrack) {
-      moveFn = _moveFixedToNext;
+      final traversalAxis = flipAxis(fixedAxis!);
+      traversalAxisIndex() => currentIndexOnAxis(traversalAxis);
+
+      if (requiresMoveToFixedAxisIndex) {
+        if (currentColumn == -1 && currentRow == -1) {
+          setCurrentIndexOnAxis(0, traversalAxis);
+        } else {
+          final fixedAxisIndex = currentIndexOnAxis(fixedAxis)!;
+          if (fixedTrackIndex! < fixedAxisIndex) {
+            setCurrentIndexOnAxis(traversalAxisIndex()! + 1, traversalAxis);
+          }
+        }
+        setCurrentIndexOnAxis(fixedTrackIndex, fixedAxis);
+        final area = _currentAreaForSpans(columnSpan!, rowSpan!);
+        if (grid.checkIsVacant(area)) return area;
+      }
+
+      while (true) {
+        setCurrentIndexOnAxis(traversalAxisIndex()! + 1, traversalAxis);
+        final area = _currentAreaForSpans(columnSpan!, rowSpan!);
+        if (grid.checkIsVacant(area)) return area;
+      }
     } else {
       // If we're packing dense, reset the cursor positioning
       if (autoPlacementMode!.packing == AutoPlacementPacking.dense) {
         currentColumn = -1;
         currentRow = -1;
       }
-      moveFn = _moveAutoToNext;
-    }
 
-    return moveFn(columnSpan, rowSpan).firstWhere(grid.checkIsVacant);
-  }
+      // The axis we will attempt to fill before moving to the next index on the
+      // growth axis.
+      final fixedAxis = autoPlacementTraversalAxis;
+      fixedAxisIndex() => currentIndexOnAxis(fixedAxis);
 
-  Iterable<GridArea> _moveFixedToNext(int? columnSpan, int? rowSpan) sync* {
-    final traversalAxis = flipAxis(fixedAxis!);
-    traversalAxisIndex() => currentIndexOnAxis(traversalAxis);
+      // The direction of growth of the grid.
+      final growthAxis = flipAxis(autoPlacementTraversalAxis);
+      growthAxisIndex() => currentIndexOnAxis(growthAxis);
 
-    if (requiresMoveToFixedAxisIndex) {
-      if (currentColumn == -1 && currentRow == -1) {
-        setCurrentIndexOnAxis(0, traversalAxis);
-      } else {
-        final fixedAxisIndex = currentIndexOnAxis(fixedAxis)!;
-        if (fixedTrackIndex! < fixedAxisIndex) {
-          setCurrentIndexOnAxis(traversalAxisIndex()! + 1, traversalAxis);
+      // Auto-placement flow
+      while (true) {
+        if (currentColumn == -1 && currentRow == -1) {
+          currentColumn = currentRow = 0;
+        } else if (fixedAxisIndex()! + 1 == getAxisLength(fixedAxis)) {
+          setCurrentIndexOnAxis(0, fixedAxis);
+          setCurrentIndexOnAxis(growthAxisIndex()! + 1, growthAxis);
+        } else {
+          setCurrentIndexOnAxis(fixedAxisIndex()! + 1, fixedAxis);
         }
+
+        final area = _currentAreaForSpans(columnSpan!, rowSpan!);
+        if (grid.checkIsVacant(area)) return area;
       }
-      setCurrentIndexOnAxis(fixedTrackIndex, fixedAxis);
-      yield _currentAreaForSpans(columnSpan!, rowSpan!);
-    }
-
-    while (true) {
-      setCurrentIndexOnAxis(traversalAxisIndex()! + 1, traversalAxis);
-      yield _currentAreaForSpans(columnSpan!, rowSpan!);
-    }
-  }
-
-  Iterable<GridArea> _moveAutoToNext(int? columnSpan, int? rowSpan) sync* {
-    // The axis we will attempt to fill before moving to the next index on the
-    // growth axis.
-    final fixedAxis = autoPlacementTraversalAxis;
-    fixedAxisIndex() => currentIndexOnAxis(fixedAxis);
-
-    // The direction of growth of the grid.
-    final growthAxis = flipAxis(autoPlacementTraversalAxis);
-    growthAxisIndex() => currentIndexOnAxis(growthAxis);
-
-    // Auto-placement flow
-    while (true) {
-      if (currentColumn == -1 && currentRow == -1) {
-        currentColumn = currentRow = 0;
-      } else if (fixedAxisIndex()! + 1 == getAxisLength(fixedAxis)) {
-        setCurrentIndexOnAxis(0, fixedAxis);
-        setCurrentIndexOnAxis(growthAxisIndex()! + 1, growthAxis);
-      } else {
-        setCurrentIndexOnAxis(fixedAxisIndex()! + 1, fixedAxis);
-      }
-
-      yield _currentAreaForSpans(columnSpan!, rowSpan!);
     }
   }
 
@@ -323,15 +321,18 @@ class PlacementGridCursor {
   }
 }
 
+/// A single cell within a [PlacementGrid].
+///
+/// Tracks the [RenderBox] objects that occupy this cell.
 class GridCell {
   GridCell(this.grid, this.index);
 
   final PlacementGrid grid;
   final int index;
-  Set<RenderBox>? _occupants;
+  List<RenderBox>? _occupants;
 
-  Set<RenderBox> get occupants {
-    _occupants ??= <RenderBox>{};
+  List<RenderBox> get occupants {
+    _occupants ??= <RenderBox>[];
     return _occupants!;
   }
 
@@ -344,14 +345,6 @@ class GridCell {
   String? get debugLabel => isOccupied
       ? (_occupants!.first.parentData as GridParentData).debugLabel
       : null;
-
-  Iterable<GridCell> nextCellsAlongAxis(Axis axis) sync* {
-    final next = axis == Axis.horizontal ? nextInRow : nextInColumn;
-    if (next != null) {
-      yield next;
-      yield* next.nextCellsAlongAxis(axis);
-    }
-  }
 
   /// The cell next to this one in the row, or `null` if none.
   GridCell? get nextInRow {

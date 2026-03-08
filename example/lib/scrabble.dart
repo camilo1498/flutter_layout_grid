@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_layout_grid/flutter_layout_grid.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'support/inner_shadow.dart';
-
 void main() {
   runApp(const ScrabbleApp());
 }
@@ -161,13 +159,7 @@ class LetterTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(1.5),
       child: SizedBox.expand(
-        child: InnerShadow(
-          offset: const Offset(0, -1.5),
-          blurX: 0.8,
-          blurY: 1,
-          color: Colors.black.withAlpha(64), // Changed from withOpacity(.25)
-          child: _buildTileContents(),
-        ),
+        child: _buildTileContents(),
       ),
     );
   }
@@ -181,6 +173,13 @@ class LetterTile extends StatelessWidget {
           width: 1.5,
         ),
         borderRadius: BorderRadius.circular(3),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(64),
+            offset: const Offset(0, 1.5),
+            blurRadius: 1,
+          ),
+        ],
       ),
       child: Padding(
         padding: EdgeInsets.only(
@@ -298,19 +297,20 @@ class Square extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(3.0),
-      child: InnerShadow(
-        offset: const Offset(0, 0.5),
-        blurX: 0.8,
-        blurY: 0.7,
-        color: Colors.black.withAlpha(64), // Changed from withOpacity(.25)
-        child: SizedBox.expand(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: const BorderRadius.all(Radius.elliptical(6, 4)),
-            ),
-            child: _buildLabel(context),
+      child: SizedBox.expand(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: const BorderRadius.all(Radius.elliptical(6, 4)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(64),
+                offset: const Offset(0, 1.5),
+                blurRadius: 0.7,
+              ),
+            ],
           ),
+          child: _buildLabel(context),
         ),
       ),
     );

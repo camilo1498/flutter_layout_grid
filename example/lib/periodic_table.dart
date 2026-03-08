@@ -78,22 +78,24 @@ class _PeriodicTableWidgetState extends State<PeriodicTableWidget> {
   }
 
   Widget _buildGrid(PeriodicTable table) {
-    return LayoutGrid(
-      gridFit: GridFit.loose,
-      columnSizes: repeat(table.numColumns, [1.fr]),
-      rowSizes: repeat(table.numRows, [auto]),
-      columnGap: 0.4.vw,
-      rowGap: 0.4.vw,
-      children: [
-        for (final e in table.elements)
-          AspectRatio(
-            aspectRatio: 40.1 / 42.4,
-            child: AtomicElementWidget(
-              key: ValueKey(e.symbol),
-              element: e,
-            ),
-          ).withGridPlacement(columnStart: e.x, rowStart: e.y),
-      ],
+    return RepaintBoundary(
+      child: LayoutGrid(
+        gridFit: GridFit.loose,
+        columnSizes: repeat(table.numColumns, [1.fr]),
+        rowSizes: repeat(table.numRows, [auto]),
+        columnGap: 0.4.vw,
+        rowGap: 0.4.vw,
+        children: [
+          for (final e in table.elements)
+            AspectRatio(
+              aspectRatio: 40.1 / 42.4,
+              child: AtomicElementWidget(
+                key: ValueKey(e.symbol),
+                element: e,
+              ),
+            ).withGridPlacement(columnStart: e.x, rowStart: e.y),
+        ],
+      ),
     );
   }
 }
@@ -121,9 +123,7 @@ class AtomicElementWidget extends StatelessWidget {
     final elementColor = categoryColorMapping[element.category]!;
     final elementTextStyle = TextStyle(
       color: elementColor,
-      shadows: [
-        Shadow(color: elementColor, offset: Offset.zero, blurRadius: 0.3.vw),
-      ],
+      // Removed expensive text shadows (472+ blurred text instances)
     );
     return Container(
       decoration: BoxDecoration(
@@ -131,12 +131,20 @@ class AtomicElementWidget extends StatelessWidget {
           width: 0.2.vw,
           color: elementColor,
         ),
+        boxShadow: [
+          // Single box shadow is vastly cheaper than hundreds of text shadows
+          BoxShadow(
+            color: elementColor.withAlpha(30),
+            blurRadius: 0.5.vw,
+          ),
+        ],
       ),
       // Some viewport sizes give us slight overflows, which can be attributed
       // to rounding errors. So we use a stack and allow overflow on the bottom
       // edge.
       child: Stack(
-        clipBehavior: Clip.hardEdge,
+        clipBehavior: Clip
+            .none, // Removed hardEdge clipping to vastly optimize raster thread
         children: [
           Positioned.fill(
             bottom: null,

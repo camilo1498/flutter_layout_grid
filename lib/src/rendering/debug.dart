@@ -1,6 +1,5 @@
 import 'package:flutter/widgets.dart';
-
-import 'layout_grid.dart';
+import 'package:flutter_layout_grid/src/rendering/grid_sizing_info.dart';
 
 /// If `true`, track sizing will be logged to the console via Flutter's
 /// [debugPrint] function.

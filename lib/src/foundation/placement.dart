@@ -1,5 +1,3 @@
-// ignore_for_file: unnecessary_this
-
 import 'dart:convert';
 import 'dart:math';
 
@@ -24,8 +22,8 @@ class GridArea {
     required int columnSpan,
     required this.rowStart,
     required int rowSpan,
-  })  : this.columnEnd = columnStart + columnSpan,
-        this.rowEnd = rowStart + rowSpan;
+  })  : columnEnd = columnStart + columnSpan,
+        rowEnd = rowStart + rowSpan;
 
   final String? name;
   final int columnStart;
@@ -172,7 +170,7 @@ final _tokenSeparatorPattern = RegExp(r'\s+');
 final _nullCellPattern = RegExp(r'^\.$');
 bool _isNullCellToken(String token) => _nullCellPattern.hasMatch(token);
 
-final _namedCellPattern = RegExp(r'^[^\.\s]+$');
+final _namedCellPattern = RegExp(r'^[^.\s]+$');
 bool _isNamedCellToken(String token) => _namedCellPattern.hasMatch(token);
 
 /// Determines the region of a [GridArea] by adding individual (column, row)

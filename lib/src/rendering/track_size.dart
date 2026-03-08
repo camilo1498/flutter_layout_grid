@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
-import 'package:quiver/iterables.dart';
 
 /// Passed to [TrackSize] functions to indicate the type of track whose
 /// cross-axis is being measured.
@@ -317,6 +316,9 @@ class IntrinsicContentTrackSize extends TrackSize {
 
 bool trackSizeListsEqual(List<TrackSize> a, List<TrackSize> b) {
   if (identical(a, b)) return true;
-  return a.length == b.length &&
-      zip([a, b]).every((pair) => pair[0] == pair[1]);
+  if (a.length != b.length) return false;
+  for (int i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
