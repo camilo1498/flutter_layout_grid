@@ -72,6 +72,7 @@ sealed class TrackSize with Diagnosticable {
     TrackType type,
     Iterable<RenderBox> items, {
     double Function(RenderBox)? crossAxisSizeForItem,
+    double Function(RenderBox, double crossAxisSize)? itemSizeFallback,
   });
 
   /// The ideal cross axis size of this track. This must be equal to or greater
@@ -98,6 +99,7 @@ sealed class TrackSize with Diagnosticable {
     TrackType type,
     Iterable<RenderBox> items, {
     required double Function(RenderBox) crossAxisSizeForItem,
+    double Function(RenderBox, double crossAxisSize)? itemSizeFallback,
   });
 
   /// The flex factor to apply to the track if there is any room left over when
@@ -110,28 +112,38 @@ sealed class TrackSize with Diagnosticable {
   /// along the vertical or horizontal axis.
   @protected
   double _itemMinIntrinsicSizeOnAxis(
-      RenderBox item, Axis axis, double crossAxisSize) {
+    RenderBox item,
+    Axis axis,
+    double crossAxisSize, {
+    double Function(RenderBox, double crossAxisSize)? itemSizeFallback,
+  }) {
     try {
-      return axis == Axis.horizontal
+      final size = axis == Axis.horizontal
           ? item.getMinIntrinsicWidth(crossAxisSize)
           : item.getMinIntrinsicHeight(crossAxisSize);
-    } catch (e) {
-      return 0.0;
-    }
+      if (size > 0) return size;
+    } catch (_) {}
+
+    return itemSizeFallback?.call(item, crossAxisSize) ?? 0.0;
   }
 
   /// Helper function for determining the maximum intrinsic size of an item
   /// along the vertical or horizontal axis.
   @protected
   double _itemMaxIntrinsicSizeOnAxis(
-      RenderBox item, Axis axis, double crossAxisSize) {
+    RenderBox item,
+    Axis axis,
+    double crossAxisSize, {
+    double Function(RenderBox, double crossAxisSize)? itemSizeFallback,
+  }) {
     try {
-      return axis == Axis.horizontal
+      final size = axis == Axis.horizontal
           ? item.getMaxIntrinsicWidth(crossAxisSize)
           : item.getMaxIntrinsicHeight(crossAxisSize);
-    } catch (e) {
-      return 0.0;
-    }
+      if (size > 0) return size;
+    } catch (_) {}
+
+    return itemSizeFallback?.call(item, crossAxisSize) ?? 0.0;
   }
 
   @override
@@ -164,6 +176,7 @@ class FixedTrackSize extends TrackSize {
     TrackType type,
     Iterable<RenderBox> items, {
     double Function(RenderBox)? crossAxisSizeForItem,
+    double Function(RenderBox, double crossAxisSize)? itemSizeFallback,
   }) {
     return sizeInPx;
   }
@@ -173,6 +186,7 @@ class FixedTrackSize extends TrackSize {
     TrackType type,
     Iterable<RenderBox> items, {
     required double Function(RenderBox) crossAxisSizeForItem,
+    double Function(RenderBox, double crossAxisSize)? itemSizeFallback,
   }) {
     return sizeInPx;
   }
@@ -226,6 +240,7 @@ class FlexibleTrackSize extends TrackSize {
     TrackType type,
     Iterable<RenderBox> items, {
     double Function(RenderBox)? crossAxisSizeForItem,
+    double Function(RenderBox, double crossAxisSize)? itemSizeFallback,
   }) {
     return 0;
   }
@@ -235,6 +250,7 @@ class FlexibleTrackSize extends TrackSize {
     TrackType type,
     Iterable<RenderBox> items, {
     required double Function(RenderBox) crossAxisSizeForItem,
+    double Function(RenderBox, double crossAxisSize)? itemSizeFallback,
   }) {
     return 0;
   }
@@ -276,6 +292,7 @@ class IntrinsicContentTrackSize extends TrackSize {
     TrackType type,
     Iterable<RenderBox> items, {
     double Function(RenderBox)? crossAxisSizeForItem,
+    double Function(RenderBox, double crossAxisSize)? itemSizeFallback,
   }) {
     crossAxisSizeForItem ??= (_) => double.infinity;
     double maxContribution = 0.0;
@@ -284,6 +301,7 @@ class IntrinsicContentTrackSize extends TrackSize {
         item,
         measurementAxisForTrackType(type),
         crossAxisSizeForItem(item),
+        itemSizeFallback: itemSizeFallback,
       );
       if (contribution > maxContribution) {
         maxContribution = contribution;
@@ -297,6 +315,7 @@ class IntrinsicContentTrackSize extends TrackSize {
     TrackType type,
     Iterable<RenderBox> items, {
     required double Function(RenderBox) crossAxisSizeForItem,
+    double Function(RenderBox, double crossAxisSize)? itemSizeFallback,
   }) {
     double maxContribution = 0.0;
     for (final item in items) {
@@ -304,6 +323,7 @@ class IntrinsicContentTrackSize extends TrackSize {
         item,
         measurementAxisForTrackType(type),
         crossAxisSizeForItem(item),
+        itemSizeFallback: itemSizeFallback,
       );
       if (contribution > maxContribution) {
         maxContribution = contribution;

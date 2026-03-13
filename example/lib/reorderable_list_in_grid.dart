@@ -63,12 +63,13 @@ class _ReorderableGridPageState extends State<ReorderableGridPage> {
                 children: [
                   // Column 1: A static grid section
                   // Wrapping in RepaintBoundary to isolate repaints
-                  _buildStaticSection('Statistics', Colors.blue).withGridPlacement(
+                  _buildStaticSection('Statistics', Colors.blue)
+                      .withGridPlacement(
                     columnStart: 0,
                     rowStart: 0,
                     addRepaintBoundary: true,
                   ),
-                  
+
                   // Column 2: Reorderable List
                   // ReorderableListView is already a heavy widget, isolation helps
                   _buildReorderableSection().withGridPlacement(
@@ -78,7 +79,8 @@ class _ReorderableGridPageState extends State<ReorderableGridPage> {
                   ),
 
                   // Bottom section spanning both columns
-                  _buildStaticSection('Footer Info', Colors.green).withGridPlacement(
+                  _buildStaticSection('Footer Info', Colors.green)
+                      .withGridPlacement(
                     columnStart: 0,
                     columnSpan: 2,
                     rowStart: 1,
@@ -115,7 +117,9 @@ class _ReorderableGridPageState extends State<ReorderableGridPage> {
             children: [
               Icon(Icons.analytics, color: color),
               const SizedBox(width: 8),
-              Text(title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold, color: color)),
             ],
           ),
           const SizedBox(height: 12),
@@ -132,9 +136,11 @@ class _ReorderableGridPageState extends State<ReorderableGridPage> {
   Widget _buildTile(int itemValue, {bool isDragging = false}) {
     return ListTile(
       key: ValueKey('item_$itemValue'),
-      tileColor: isDragging 
-          ? Colors.deepPurple[100] 
-          : (itemValue.isOdd ? Colors.white : Colors.deepPurple[50]?.withOpacity(0.3)),
+      tileColor: isDragging
+          ? Colors.deepPurple[100]
+          : (itemValue.isOdd
+              ? Colors.white
+              : Colors.deepPurple[50]?.withOpacity(0.3)),
       title: Text('Performance Item $itemValue'),
       subtitle: const Text('Try dragging me!'),
       leading: const CircleAvatar(
@@ -145,7 +151,6 @@ class _ReorderableGridPageState extends State<ReorderableGridPage> {
   }
 
   Widget _buildReorderableSection() {
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.deepPurple.withOpacity(0.05),
@@ -161,58 +166,31 @@ class _ReorderableGridPageState extends State<ReorderableGridPage> {
               children: [
                 Icon(Icons.reorder, color: Colors.deepPurple),
                 SizedBox(width: 8),
-                Text('Task Reordering', 
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('Task Reordering',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
-          // Using a Column with draggable items instead of ReorderableListView
-          // This allows the list to have intrinsic height, which LayoutGrid can measure.
-          Column(
-            children: [
+          // ReorderableListView now works DIRECTLY in LayoutGrid auto tracks!
+          // No hardcoded height, no itemCount * 72.0 hacks.
+          // The package now automatically performs a layout fallback to find the correct size.
+          ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: <Widget>[
               for (int index = 0; index < _items.length; index++)
-                DragTarget<int>(
-                  onWillAccept: (data) => data != index,
-                  onAccept: (fromIndex) {
-                    setState(() {
-                      final item = _items.removeAt(fromIndex);
-                      _items.insert(index, item);
-                    });
-                  },
-                  builder: (context, candidateData, rejectedData) {
-                    final itemValue = _items[index];
-                    return Column(
-                      children: [
-                        if (candidateData.isNotEmpty)
-                          Container(
-                            height: 4,
-                            margin: const EdgeInsets.symmetric(vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.deepPurple,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        LongPressDraggable<int>(
-                          data: index,
-                          feedback: Material(
-                            elevation: 8,
-                            borderRadius: BorderRadius.circular(8),
-                            child: SizedBox(
-                              width: MediaQuery.of(context).size.width * 0.8,
-                              child: _buildTile(itemValue, isDragging: true),
-                            ),
-                          ),
-                          childWhenDragging: Opacity(
-                            opacity: 0.3,
-                            child: _buildTile(itemValue),
-                          ),
-                          child: _buildTile(itemValue),
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                _buildTile(_items[index]),
             ],
+            onReorder: (int oldIndex, int newIndex) {
+              setState(() {
+                if (oldIndex < newIndex) {
+                  newIndex -= 1;
+                }
+                final int item = _items.removeAt(oldIndex);
+                _items.insert(newIndex, item);
+              });
+            },
           ),
 
           const SizedBox(height: 16),

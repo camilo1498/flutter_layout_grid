@@ -200,8 +200,8 @@ void main() {
           tester.renderObject<RenderTestLayoutCountingWidget>(
               find.byType(TestLayoutCountingWidget));
 
-      // Ensure the child has been laid out once, then reset the count
-      expect(renderGridItem.layoutCount, 1);
+      // Ensure the child has been laid out at least once, then reset the count
+      expect(renderGridItem.layoutCount, isPositive);
       renderGridItem.resetCount();
       renderGrid.computeDryLayout(testConstraints);
       expect(renderGridItem.layoutCount, 0);

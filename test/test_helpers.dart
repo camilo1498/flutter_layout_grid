@@ -82,4 +82,9 @@ class RenderTestLayoutCountingWidget extends RenderBox {
     layoutCount++;
     size = constraints.biggest;
   }
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    return constraints.biggest;
+  }
 }

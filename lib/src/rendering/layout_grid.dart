@@ -310,7 +310,7 @@ class RenderLayoutGrid extends RenderBox
   @override
   @visibleForTesting
   Size computeDryLayout(BoxConstraints constraints) {
-    return computeGridSize(constraints).gridSize!;
+    return computeGridSize(constraints, dryRun: true).gridSize!;
   }
 
   @visibleForTesting
@@ -340,6 +340,7 @@ class RenderLayoutGrid extends RenderBox
       TrackType.column,
       gridSizing,
       constraints: childConstraints,
+      dryRun: dryRun,
     );
 
     // Determine the size of the row tracks
@@ -347,6 +348,7 @@ class RenderLayoutGrid extends RenderBox
       TrackType.row,
       gridSizing,
       constraints: childConstraints,
+      dryRun: dryRun,
     );
 
     // Stretch intrinsics
@@ -385,9 +387,10 @@ class RenderLayoutGrid extends RenderBox
     TrackType typeBeingSized,
     GridSizingInfo gridSizing, {
     BoxConstraints? constraints,
+    bool dryRun = false,
   }) {
     final tracks = _performTrackSizingInternal(typeBeingSized, gridSizing,
-        constraints: constraints);
+        constraints: constraints, dryRun: dryRun);
     gridSizing.markTrackTypeSized(typeBeingSized);
     return tracks;
   }
@@ -399,6 +402,7 @@ class RenderLayoutGrid extends RenderBox
     TrackType typeBeingSized,
     GridSizingInfo gridSizing, {
     BoxConstraints? constraints,
+    bool dryRun = false,
   }) {
     final sizingAxis = measurementAxisForTrackType(typeBeingSized);
     final intrinsicTracks = <GridTrack>[];
@@ -445,7 +449,8 @@ class RenderLayoutGrid extends RenderBox
     // 2. Resolve intrinsic track sizes
 
     _resolveIntrinsicTrackSizes(typeBeingSized, sizingAxis, tracks,
-        intrinsicTracks, gridSizing, constraints);
+        intrinsicTracks, gridSizing, constraints,
+        dryRun: dryRun);
 
     // 3. Grow all tracks from their baseSize up to their growthLimit value
     //    until freeSpace is exhausted.
@@ -520,8 +525,9 @@ class RenderLayoutGrid extends RenderBox
     List<GridTrack> tracks,
     List<GridTrack> intrinsicTracks,
     GridSizingInfo gridSizing,
-    BoxConstraints? constraints,
-  ) {
+    BoxConstraints? constraints, {
+    bool dryRun = false,
+  }) {
     if (intrinsicTracks.isNotEmpty && debugPrintGridLayout) {
       debugPrint('Resolving intrinsic ${type.name} '
           '${type == TrackType.column ? 'widths' : 'heights'} '
@@ -574,8 +580,42 @@ class RenderLayoutGrid extends RenderBox
         // Calculate the min-size of the spanned items, and distribute the
         // additional space to the spanned tracks' base sizes.
         final minSpanSize = intrinsicTrack.sizeFunction.minIntrinsicSize(
-            type, spanItemsInTrack!,
-            crossAxisSizeForItem: crossAxisSizeForItem);
+          type,
+          spanItemsInTrack!,
+          crossAxisSizeForItem: crossAxisSizeForItem,
+          itemSizeFallback: (item, crossAxisSize) {
+            // Perform a dry layout to get the real size if intrinsics fail
+            final innerConstraints = type == TrackType.column
+                ? BoxConstraints(
+                    minHeight: crossAxisSize.isFinite ? crossAxisSize : 0,
+                    maxHeight: crossAxisSize.isFinite
+                        ? crossAxisSize
+                        : (constraints?.maxHeight ?? double.infinity),
+                    minWidth: 0,
+                    maxWidth: constraints?.maxWidth ?? double.infinity,
+                  )
+                : BoxConstraints(
+                    minWidth: crossAxisSize.isFinite ? crossAxisSize : 0,
+                    maxWidth: crossAxisSize.isFinite
+                        ? crossAxisSize
+                        : (constraints?.maxWidth ?? double.infinity),
+                    minHeight: 0,
+                    maxHeight: constraints?.maxHeight ?? double.infinity,
+                  );
+            Size size;
+            if (dryRun) {
+              try {
+                size = item.getDryLayout(innerConstraints);
+              } catch (_) {
+                size = Size.zero;
+              }
+            } else {
+              item.layout(innerConstraints, parentUsesSize: true);
+              size = item.size;
+            }
+            return type == TrackType.column ? size.width : size.height;
+          },
+        );
         if (debugPrintGridLayout) {
           debugPrint('  min size of '
               '${debugTrackIndicesString(spannedTracks, trackPrefix: true)} '
@@ -588,8 +628,42 @@ class RenderLayoutGrid extends RenderBox
         // Calculate the max-size of the spanned items, and distribute the
         // additional space to the spanned tracks' growth limits.
         final maxSpanSize = intrinsicTrack.sizeFunction.maxIntrinsicSize(
-            type, spanItemsInTrack,
-            crossAxisSizeForItem: crossAxisSizeForItem);
+          type,
+          spanItemsInTrack,
+          crossAxisSizeForItem: crossAxisSizeForItem,
+          itemSizeFallback: (item, crossAxisSize) {
+            // Perform a dry layout to get the real size if intrinsics fail
+            final innerConstraints = type == TrackType.column
+                ? BoxConstraints(
+                    minHeight: crossAxisSize.isFinite ? crossAxisSize : 0,
+                    maxHeight: crossAxisSize.isFinite
+                        ? crossAxisSize
+                        : (constraints?.maxHeight ?? double.infinity),
+                    minWidth: 0,
+                    maxWidth: constraints?.maxWidth ?? double.infinity,
+                  )
+                : BoxConstraints(
+                    minWidth: crossAxisSize.isFinite ? crossAxisSize : 0,
+                    maxWidth: crossAxisSize.isFinite
+                        ? crossAxisSize
+                        : (constraints?.maxWidth ?? double.infinity),
+                    minHeight: 0,
+                    maxHeight: constraints?.maxHeight ?? double.infinity,
+                  );
+            Size size;
+            if (dryRun) {
+              try {
+                size = item.getDryLayout(innerConstraints);
+              } catch (_) {
+                size = Size.zero;
+              }
+            } else {
+              item.layout(innerConstraints, parentUsesSize: true);
+              size = item.size;
+            }
+            return type == TrackType.column ? size.width : size.height;
+          },
+        );
         _distributeCalculatedSpaceToSpannedTracks(
             maxSpanSize, type, spannedTracks, IntrinsicDimension.max);
         if (debugPrintGridLayout) {
@@ -805,7 +879,24 @@ class RenderLayoutGrid extends RenderBox
 
   @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
-    return defaultHitTestChildren(result, position: position);
+    // We only hit test children that have been placed.
+    var child = lastChild;
+    while (child != null) {
+      final childParentData = child.parentData as GridParentData;
+      if (childParentData.isPlaced) {
+        final bool isHit = result.addWithPaintOffset(
+          offset: childParentData.offset,
+          position: position,
+          hitTest: (BoxHitTestResult result, Offset? transformed) {
+            assert(transformed == position - childParentData.offset);
+            return child!.hitTest(result, position: transformed!);
+          },
+        );
+        if (isHit) return true;
+      }
+      child = childParentData.previousSibling;
+    }
+    return false;
   }
 
   @override
