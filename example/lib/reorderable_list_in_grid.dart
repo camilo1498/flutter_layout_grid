@@ -56,8 +56,13 @@ class _ReorderableGridPageState extends State<ReorderableGridPage> {
               ),
               const SizedBox(height: 24),
               LayoutGrid(
+                areas: '''
+                a   b
+                c   b
+                d   d
+                ''',
                 columnSizes: [1.fr, 1.fr],
-                rowSizes: [auto, auto],
+                rowSizes: const [auto, auto],
                 rowGap: 16,
                 columnGap: 16,
                 children: [
@@ -65,27 +70,35 @@ class _ReorderableGridPageState extends State<ReorderableGridPage> {
                   // Wrapping in RepaintBoundary to isolate repaints
                   _buildStaticSection('Statistics', Colors.blue)
                       .withGridPlacement(
-                    columnStart: 0,
-                    rowStart: 0,
-                    addRepaintBoundary: true,
-                  ),
+                        columnStart: 0,
+                        rowStart: 0,
+                        addRepaintBoundary: true,
+                      )
+                      .inGridArea('a'),
 
                   // Column 2: Reorderable List
                   // ReorderableListView is already a heavy widget, isolation helps
-                  _buildReorderableSection().withGridPlacement(
-                    columnStart: 1,
-                    rowStart: 0,
-                    addRepaintBoundary: true,
-                  ),
+                  _buildReorderableSection()
+                      .withGridPlacement(
+                        columnStart: 1,
+                        rowStart: 0,
+                        addRepaintBoundary: true,
+                      )
+                      .inGridArea('b'),
+
+                  Container(
+                    color: Colors.red,
+                  ).inGridArea('c'),
 
                   // Bottom section spanning both columns
                   _buildStaticSection('Footer Info', Colors.green)
                       .withGridPlacement(
-                    columnStart: 0,
-                    columnSpan: 2,
-                    rowStart: 1,
-                    addRepaintBoundary: true,
-                  ),
+                        columnStart: 0,
+                        columnSpan: 2,
+                        rowStart: 1,
+                        addRepaintBoundary: true,
+                      )
+                      .inGridArea('d'),
                 ],
               ),
             ],
