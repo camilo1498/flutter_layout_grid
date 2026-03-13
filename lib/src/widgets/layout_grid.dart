@@ -90,7 +90,7 @@ enum GridFit {
 ///
 /// If a grid item falls outside of the area defined by the template tracks, an
 /// [FlutterError] will be thrown during layout.
-class LayoutGrid extends MultiChildRenderObjectWidget {
+class LayoutGrid extends StatelessWidget {
   const LayoutGrid({
     super.key,
     this.autoPlacement = AutoPlacement.rowSparse,
@@ -101,7 +101,8 @@ class LayoutGrid extends MultiChildRenderObjectWidget {
     this.rowGap = 0,
     this.columnGap = 0,
     this.textDirection,
-    super.children,
+    this.addRepaintBoundaries = false,
+    this.children = const [],
   });
 
   /// Controls how the auto-placement algorithm works, specifying exactly how
@@ -112,27 +113,6 @@ class LayoutGrid extends MultiChildRenderObjectWidget {
   final GridFit gridFit;
 
   /// Defines named areas of the grid for placement of grid items by name.
-  ///
-  /// This string is similar to `grid-template-areas` in CSS, as described in
-  /// https://developer.mozilla.org/en-US/docs/Web/CSS/grid-template-areas,
-  /// but unlike CSS is a single multiline string.
-  ///
-  /// Can be `null`, meaning that any grid item placed by name will not appear
-  /// in the grid.
-  ///
-  /// Example:
-  ///
-  /// ```dart
-  /// LayoutGrid(
-  ///   areas: '''
-  ///     header header  header
-  ///     nav    content aside
-  ///     nav    content .
-  ///     footer footer  footer
-  ///   ''',
-  /// )
-  /// ```
-  ///
   final String? areas;
 
   /// Defines the track sizing functions of the grid's columns.
@@ -148,8 +128,102 @@ class LayoutGrid extends MultiChildRenderObjectWidget {
   final double rowGap;
 
   /// The text direction used to resolve column ordering.
+  final TextDirection? textDirection;
+
+  /// Whether to wrap each child in a [RepaintBoundary].
   ///
-  /// Defaults to the ambient [Directionality].
+  /// This is a convenience property that applies [RepaintBoundary] to all
+  /// children of the grid. If a child is already wrapped in a placement widget
+  /// ([GridPlacement] or [NamedAreaGridPlacement]), the [RepaintBoundary] will
+  /// be placed *inside* the placement widget to maintain [ParentData]
+  /// correctness.
+  final bool addRepaintBoundaries;
+
+  /// The children of the grid.
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final childrenWithBoundaries = addRepaintBoundaries
+        ? children.map((child) {
+            if (child is GridPlacement) {
+              return GridPlacement(
+                key: child.key,
+                columnStart: child.columnStart,
+                columnSpan: child.columnSpan,
+                rowStart: child.rowStart,
+                rowSpan: child.rowSpan,
+                addRepaintBoundary: true,
+                child: RepaintBoundary(child: child.child),
+              );
+            } else if (child is NamedAreaGridPlacement) {
+              return NamedAreaGridPlacement(
+                key: child.key,
+                areaName: child.areaName,
+                addRepaintBoundary: true,
+                child: RepaintBoundary(child: child.child),
+              );
+            }
+            return RepaintBoundary(child: child);
+          }).toList()
+        : children;
+
+    return _LayoutGrid(
+      autoPlacement: autoPlacement,
+      gridFit: gridFit,
+      areas: areas,
+      columnSizes: columnSizes,
+      rowSizes: rowSizes,
+      rowGap: rowGap,
+      columnGap: columnGap,
+      textDirection: textDirection,
+      children: childrenWithBoundaries,
+    );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+
+    properties.add(IterableProperty(
+      'columnSizes',
+      columnSizes,
+    ));
+    properties.add(IterableProperty(
+      'rowSizes',
+      rowSizes,
+    ));
+    properties.add(DiagnosticsProperty('autoPlacement', autoPlacement));
+    properties.add(DiagnosticsProperty('gridFit', gridFit));
+    properties.add(DoubleProperty('columnGap', columnGap));
+    properties.add(DoubleProperty('rowGap', rowGap));
+    properties.add(DiagnosticsProperty('addRepaintBoundaries', addRepaintBoundaries));
+    if (textDirection != null) {
+      properties.add(DiagnosticsProperty('textDirection', textDirection));
+    }
+  }
+}
+
+class _LayoutGrid extends MultiChildRenderObjectWidget {
+  const _LayoutGrid({
+    this.autoPlacement = AutoPlacement.rowSparse,
+    this.gridFit = GridFit.expand,
+    this.areas,
+    required this.columnSizes,
+    required this.rowSizes,
+    this.rowGap = 0,
+    this.columnGap = 0,
+    this.textDirection,
+    super.children,
+  });
+
+  final AutoPlacement autoPlacement;
+  final GridFit gridFit;
+  final String? areas;
+  final List<TrackSize> columnSizes;
+  final List<TrackSize> rowSizes;
+  final double columnGap;
+  final double rowGap;
   final TextDirection? textDirection;
 
   @override
@@ -177,26 +251,5 @@ class LayoutGrid extends MultiChildRenderObjectWidget {
       ..columnGap = columnGap
       ..rowGap = rowGap
       ..textDirection = textDirection ?? Directionality.of(context);
-  }
-
-  @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-
-    properties.add(IterableProperty(
-      'columnSizes',
-      columnSizes,
-    ));
-    properties.add(IterableProperty(
-      'rowSizes',
-      rowSizes,
-    ));
-    properties.add(DiagnosticsProperty('autoPlacement', autoPlacement));
-    properties.add(DiagnosticsProperty('gridFit', gridFit));
-    properties.add(DoubleProperty('columnGap', columnGap));
-    properties.add(DoubleProperty('rowGap', rowGap));
-    if (textDirection != null) {
-      properties.add(DiagnosticsProperty('textDirection', textDirection));
-    }
   }
 }

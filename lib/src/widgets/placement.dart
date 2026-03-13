@@ -31,6 +31,7 @@ class GridPlacement extends ParentDataWidget<GridParentData> {
     this.columnSpan = 1,
     this.rowStart,
     this.rowSpan = 1,
+    this.addRepaintBoundary = false,
   });
 
   /// If `null`, the child will be auto-placed.
@@ -44,6 +45,12 @@ class GridPlacement extends ParentDataWidget<GridParentData> {
 
   /// The number of rows spanned by the child. Defaults to `1`.
   final int rowSpan;
+
+  /// Whether to wrap the child in a [RepaintBoundary].
+  ///
+  /// This can significantly improve performance when the child is expensive to
+  /// paint, or when it moves frequently (e.g., during a reorder operation).
+  final bool addRepaintBoundary;
 
   @override
   void applyParentData(RenderObject renderObject) {
@@ -102,6 +109,7 @@ class GridPlacement extends ParentDataWidget<GridParentData> {
       properties.add(StringProperty('rowStart', 'auto'));
     }
     properties.add(IntProperty('rowSpan', rowSpan));
+    properties.add(DiagnosticsProperty('addRepaintBoundary', addRepaintBoundary));
   }
 
   @override
@@ -118,9 +126,13 @@ class NamedAreaGridPlacement extends ParentDataWidget<GridParentData> {
     super.key,
     required this.areaName,
     required super.child,
+    this.addRepaintBoundary = false,
   });
 
   final String areaName;
+
+  /// Whether to wrap the child in a [RepaintBoundary].
+  final bool addRepaintBoundary;
 
   @override
   void applyParentData(RenderObject renderObject) {
@@ -140,6 +152,7 @@ class NamedAreaGridPlacement extends ParentDataWidget<GridParentData> {
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties.add(StringProperty('areaName', areaName));
+    properties.add(DiagnosticsProperty('addRepaintBoundary', addRepaintBoundary));
   }
 
   @override
@@ -148,11 +161,13 @@ class NamedAreaGridPlacement extends ParentDataWidget<GridParentData> {
 
 /// Extension methods for terse placement syntax
 extension GridPlacementExtensions on Widget {
-  NamedAreaGridPlacement inGridArea(String areaName, {Key? key}) {
+  NamedAreaGridPlacement inGridArea(String areaName,
+      {Key? key, bool addRepaintBoundary = false}) {
     return NamedAreaGridPlacement(
       key: key,
       areaName: areaName,
-      child: this,
+      addRepaintBoundary: addRepaintBoundary,
+      child: addRepaintBoundary ? RepaintBoundary(child: this) : this,
     );
   }
 
@@ -162,6 +177,7 @@ extension GridPlacementExtensions on Widget {
     int columnSpan = 1,
     int? rowStart,
     int rowSpan = 1,
+    bool addRepaintBoundary = false,
   }) {
     return GridPlacement(
       key: key,
@@ -169,7 +185,8 @@ extension GridPlacementExtensions on Widget {
       columnSpan: columnSpan,
       rowStart: rowStart,
       rowSpan: rowSpan,
-      child: this,
+      addRepaintBoundary: addRepaintBoundary,
+      child: addRepaintBoundary ? RepaintBoundary(child: this) : this,
     );
   }
 }

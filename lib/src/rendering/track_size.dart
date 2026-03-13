@@ -111,9 +111,13 @@ sealed class TrackSize with Diagnosticable {
   @protected
   double _itemMinIntrinsicSizeOnAxis(
       RenderBox item, Axis axis, double crossAxisSize) {
-    return axis == Axis.horizontal
-        ? item.getMinIntrinsicWidth(crossAxisSize)
-        : item.getMinIntrinsicHeight(crossAxisSize);
+    try {
+      return axis == Axis.horizontal
+          ? item.getMinIntrinsicWidth(crossAxisSize)
+          : item.getMinIntrinsicHeight(crossAxisSize);
+    } catch (e) {
+      return 0.0;
+    }
   }
 
   /// Helper function for determining the maximum intrinsic size of an item
@@ -121,9 +125,13 @@ sealed class TrackSize with Diagnosticable {
   @protected
   double _itemMaxIntrinsicSizeOnAxis(
       RenderBox item, Axis axis, double crossAxisSize) {
-    return axis == Axis.horizontal
-        ? item.getMaxIntrinsicWidth(crossAxisSize)
-        : item.getMaxIntrinsicHeight(crossAxisSize);
+    try {
+      return axis == Axis.horizontal
+          ? item.getMaxIntrinsicWidth(crossAxisSize)
+          : item.getMaxIntrinsicHeight(crossAxisSize);
+    } catch (e) {
+      return 0.0;
+    }
   }
 
   @override
